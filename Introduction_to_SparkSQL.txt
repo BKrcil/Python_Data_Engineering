@@ -1,0 +1,392 @@
+Objectives
+Spark SQL is a Spark module for structured data processing. It is sed to query structured data inside Spark programs, using either SQL or a familiar DataFrame API.
+
+After completing this lab you will be able to:
+
+Load a data file into a dataframe
+Create a Table View for the dataframe
+Run basic SQL queries and aggregate data on the table view
+Create a Pandas UDF to perform columnar operations
+Setup
+For this lab, we are going to be using Python and Spark (PySpark). These libraries should be installed in your lab environment or in SN Labs. Pandas is a popular data science package for Python. In this lab, we use Pandas to load a CSV file from disc to a pandas dataframe in memory. PySpark is the Spark API for Python. In this lab, we use PySpark to initialize the spark context.
+
+# Installing required packages
+!pip install pyspark
+!pip install findspark
+!pip install pyarrow==0.14.1 
+!pip install pandas
+!pip install numpy==1.19.5
+Collecting pyspark
+  Downloading pyspark-3.4.3.tar.gz (311.4 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 311.4/311.4 MB 1.2 MB/s eta 0:00:0000:0100:01
+  Preparing metadata (setup.py) ... done
+Collecting py4j==0.10.9.7 (from pyspark)
+  Downloading py4j-0.10.9.7-py2.py3-none-any.whl (200 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 200.5/200.5 kB 5.2 MB/s eta 0:00:00a 0:00:01
+Building wheels for collected packages: pyspark
+  Building wheel for pyspark (setup.py) ... done
+  Created wheel for pyspark: filename=pyspark-3.4.3-py2.py3-none-any.whl size=311885504 sha256=77429de02a57a0f13b3a17ff4fc50ee0843f356de9705a21f1ef352027e2a0cf
+  Stored in directory: /home/jupyterlab/.cache/pip/wheels/37/bc/bb/77785f6fcd2c83e663647f73225b76f3a3d5fd00762d7daf6f
+Successfully built pyspark
+Installing collected packages: py4j, pyspark
+Successfully installed py4j-0.10.9.7 pyspark-3.4.3
+Collecting findspark
+  Downloading findspark-2.0.1-py2.py3-none-any.whl (4.4 kB)
+Installing collected packages: findspark
+Successfully installed findspark-2.0.1
+Collecting pyarrow==0.14.1
+  Downloading pyarrow-0.14.1-cp37-cp37m-manylinux2010_x86_64.whl (58.1 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 58.1/58.1 MB 24.9 MB/s eta 0:00:0000:0100:01
+Requirement already satisfied: numpy>=1.14 in /home/jupyterlab/conda/envs/python/lib/python3.7/site-packages (from pyarrow==0.14.1) (1.21.6)
+Requirement already satisfied: six>=1.0.0 in /home/jupyterlab/conda/envs/python/lib/python3.7/site-packages (from pyarrow==0.14.1) (1.16.0)
+Installing collected packages: pyarrow
+Successfully installed pyarrow-0.14.1
+Requirement already satisfied: pandas in /home/jupyterlab/conda/envs/python/lib/python3.7/site-packages (1.3.5)
+Requirement already satisfied: python-dateutil>=2.7.3 in /home/jupyterlab/conda/envs/python/lib/python3.7/site-packages (from pandas) (2.8.2)
+Requirement already satisfied: pytz>=2017.3 in /home/jupyterlab/conda/envs/python/lib/python3.7/site-packages (from pandas) (2023.3)
+Requirement already satisfied: numpy>=1.17.3 in /home/jupyterlab/conda/envs/python/lib/python3.7/site-packages (from pandas) (1.21.6)
+Requirement already satisfied: six>=1.5 in /home/jupyterlab/conda/envs/python/lib/python3.7/site-packages (from python-dateutil>=2.7.3->pandas) (1.16.0)
+Collecting numpy==1.19.5
+  Downloading numpy-1.19.5-cp37-cp37m-manylinux2010_x86_64.whl (14.8 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.8/14.8 MB 81.3 MB/s eta 0:00:0000:0100:01
+Installing collected packages: numpy
+  Attempting uninstall: numpy
+    Found existing installation: numpy 1.21.6
+    Uninstalling numpy-1.21.6:
+      Successfully uninstalled numpy-1.21.6
+Successfully installed numpy-1.19.5
+import findspark
+findspark.init()
+import pandas as pd
+from pyspark import SparkContext, SparkConf
+from pyspark.sql import SparkSession
+Exercise 1 - Spark session
+Create and initialize the Spark session needed to load the data frames and operate on it
+
+Task 1: Creating the spark session and context
+# Creating a spark context class
+sc = SparkContext()
+​
+# Creating a spark session
+spark = SparkSession \
+    .builder \
+    .appName("Python Spark DataFrames basic example") \
+    .config("spark.some.config.option", "some-value") \
+    .getOrCreate()
+24/07/09 21:48:47 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+Task 2: Initialize Spark session
+To work with dataframes we just need to verify that the spark session instance has been created.
+
+spark
+SparkSession - in-memory
+
+SparkContext
+
+Spark UI
+
+Versionv2.4.3Masterlocal[*]AppNamepyspark-shell
+Exercise 2 - Loading the Data and creating a table view
+In this section, you will first read the CSV file into a Pandas Dataframe and then read it into a Spark Dataframe Pandas is a library used for data manipulation and analysis. The Pandas library offers data structures and operations for creating and manipulating Data Series and DataFrame objects. Data can be imported from various data sources, e.g., Numpy arrays, Python dictionaries, and CSV files. Pandas allows you to manipulate, organize and display the data.
+
+To create a Spark DataFrame we load an external DataFrame, called mtcars. This DataFrame includes 32 observations on 11 variables:
+
+colIndex	colName	units/description
+[, 1]	mpg	Miles per gallon
+[, 2]	cyl	Number of cylinders
+[, 3]	disp	Displacement (cu.in.)
+[, 4]	hp	Gross horsepower
+[, 5]	drat	Rear axle ratio
+[, 6]	wt	Weight (lb/1000)
+[, 7]	qsec	1/4 mile time
+[, 8]	vs	V/S
+[, 9]	am	Transmission (0 = automatic, 1 = manual)
+[,10]	gear	Number of forward gears
+[,11]	carb	Number of carburetors
+Task 1: Load data into a Pandas DataFrame.
+Pandas has a convenient function to load CSV data from a URL directly into a pandas dataframe.
+
+# Read the file using `read_csv` function in pandas
+mtcars = pd.read_csv('https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBM-BD0225EN-SkillsNetwork/labs/data/mtcars.csv')
+# Preview a few records
+mtcars.head()
+Unnamed: 0	mpg	cyl	disp	hp	drat	wt	qsec	vs	am	gear	carb
+0	Mazda RX4	21.0	6	160.0	110	3.90	2.620	16.46	0	1	4	4
+1	Mazda RX4 Wag	21.0	6	160.0	110	3.90	2.875	17.02	0	1	4	4
+2	Datsun 710	22.8	4	108.0	93	3.85	2.320	18.61	1	1	4	1
+3	Hornet 4 Drive	21.4	6	258.0	110	3.08	3.215	19.44	1	0	3	1
+4	Hornet Sportabout	18.7	8	360.0	175	3.15	3.440	17.02	0	0	3	2
+mtcars.rename( columns={'Unnamed: 0':'name'}, inplace=True )
+Task 2: Loading data into a Spark DataFrame
+We use the createDataFrame function to load the data into a spark dataframe
+
+sdf = spark.createDataFrame(mtcars) 
+Let us look at the schema of the loaded spark dataframe
+
+sdf.printSchema()
+root
+ |-- name: string (nullable = true)
+ |-- mpg: double (nullable = true)
+ |-- cyl: long (nullable = true)
+ |-- disp: double (nullable = true)
+ |-- hp: long (nullable = true)
+ |-- drat: double (nullable = true)
+ |-- wt: double (nullable = true)
+ |-- qsec: double (nullable = true)
+ |-- vs: long (nullable = true)
+ |-- am: long (nullable = true)
+ |-- gear: long (nullable = true)
+ |-- carb: long (nullable = true)
+
+Task 3: Rename the existing column name "vs" to "versus" and assign the new result DataFrame to a variable, "sdf_new".
+The function withColumnRenamed() is renames the existing column names.
+
+sdf_new = sdf.withColumnRenamed("vs", "versus")
+The execution of the above function doesn’t modify the original DataFrame sdf, instead, a new DataFrame sdf_new is created with the renamed column.
+
+Task 4: View the new dataframe
+sdf_new.head(5)
+                                                                                
+[Row(name='Mazda RX4', mpg=21.0, cyl=6, disp=160.0, hp=110, drat=3.9, wt=2.62, qsec=16.46, versus=0, am=1, gear=4, carb=4),
+ Row(name='Mazda RX4 Wag', mpg=21.0, cyl=6, disp=160.0, hp=110, drat=3.9, wt=2.875, qsec=17.02, versus=0, am=1, gear=4, carb=4),
+ Row(name='Datsun 710', mpg=22.8, cyl=4, disp=108.0, hp=93, drat=3.85, wt=2.32, qsec=18.61, versus=1, am=1, gear=4, carb=1),
+ Row(name='Hornet 4 Drive', mpg=21.4, cyl=6, disp=258.0, hp=110, drat=3.08, wt=3.215, qsec=19.44, versus=1, am=0, gear=3, carb=1),
+ Row(name='Hornet Sportabout', mpg=18.7, cyl=8, disp=360.0, hp=175, drat=3.15, wt=3.44, qsec=17.02, versus=0, am=0, gear=3, carb=2)]
+Observe how vs has now been renamed to versus in this dataframe.
+
+Task 4: Create a Table View
+Creating a table view in Spark SQL is required to run SQL queries programmatically on a DataFrame. A view is a temporary table to run SQL queries. A Temporary view provides local scope within the current Spark session. In this example we create a temporary view using the createTempView() function
+
+sdf.createTempView("cars")
+​
+Exercise 3 - Running SQL queries and aggregating data
+Once we have a table view, we can run queries similar to querying a SQL table. We perform similar operations to the ones in the DataFrames notebook. Note the difference here however is that we use the SQL queries directly.
+
+# Showing the whole table
+spark.sql("SELECT * FROM cars").show()
++-------------------+----+---+-----+---+----+-----+-----+---+---+----+----+
+|               name| mpg|cyl| disp| hp|drat|   wt| qsec| vs| am|gear|carb|
++-------------------+----+---+-----+---+----+-----+-----+---+---+----+----+
+|          Mazda RX4|21.0|  6|160.0|110| 3.9| 2.62|16.46|  0|  1|   4|   4|
+|      Mazda RX4 Wag|21.0|  6|160.0|110| 3.9|2.875|17.02|  0|  1|   4|   4|
+|         Datsun 710|22.8|  4|108.0| 93|3.85| 2.32|18.61|  1|  1|   4|   1|
+|     Hornet 4 Drive|21.4|  6|258.0|110|3.08|3.215|19.44|  1|  0|   3|   1|
+|  Hornet Sportabout|18.7|  8|360.0|175|3.15| 3.44|17.02|  0|  0|   3|   2|
+|            Valiant|18.1|  6|225.0|105|2.76| 3.46|20.22|  1|  0|   3|   1|
+|         Duster 360|14.3|  8|360.0|245|3.21| 3.57|15.84|  0|  0|   3|   4|
+|          Merc 240D|24.4|  4|146.7| 62|3.69| 3.19| 20.0|  1|  0|   4|   2|
+|           Merc 230|22.8|  4|140.8| 95|3.92| 3.15| 22.9|  1|  0|   4|   2|
+|           Merc 280|19.2|  6|167.6|123|3.92| 3.44| 18.3|  1|  0|   4|   4|
+|          Merc 280C|17.8|  6|167.6|123|3.92| 3.44| 18.9|  1|  0|   4|   4|
+|         Merc 450SE|16.4|  8|275.8|180|3.07| 4.07| 17.4|  0|  0|   3|   3|
+|         Merc 450SL|17.3|  8|275.8|180|3.07| 3.73| 17.6|  0|  0|   3|   3|
+|        Merc 450SLC|15.2|  8|275.8|180|3.07| 3.78| 18.0|  0|  0|   3|   3|
+| Cadillac Fleetwood|10.4|  8|472.0|205|2.93| 5.25|17.98|  0|  0|   3|   4|
+|Lincoln Continental|10.4|  8|460.0|215| 3.0|5.424|17.82|  0|  0|   3|   4|
+|  Chrysler Imperial|14.7|  8|440.0|230|3.23|5.345|17.42|  0|  0|   3|   4|
+|           Fiat 128|32.4|  4| 78.7| 66|4.08|  2.2|19.47|  1|  1|   4|   1|
+|        Honda Civic|30.4|  4| 75.7| 52|4.93|1.615|18.52|  1|  1|   4|   2|
+|     Toyota Corolla|33.9|  4| 71.1| 65|4.22|1.835| 19.9|  1|  1|   4|   1|
++-------------------+----+---+-----+---+----+-----+-----+---+---+----+----+
+only showing top 20 rows
+
+# Showing a specific column
+spark.sql("SELECT mpg FROM cars").show(5)
++----+
+| mpg|
++----+
+|21.0|
+|21.0|
+|22.8|
+|21.4|
+|18.7|
++----+
+only showing top 5 rows
+
+# Basic filtering query to determine cars that have a high mileage and low cylinder count
+spark.sql("SELECT * FROM cars where mpg>20 AND cyl < 6").show(5)
++-----------+----+---+-----+---+----+-----+-----+---+---+----+----+
+|       name| mpg|cyl| disp| hp|drat|   wt| qsec| vs| am|gear|carb|
++-----------+----+---+-----+---+----+-----+-----+---+---+----+----+
+| Datsun 710|22.8|  4|108.0| 93|3.85| 2.32|18.61|  1|  1|   4|   1|
+|  Merc 240D|24.4|  4|146.7| 62|3.69| 3.19| 20.0|  1|  0|   4|   2|
+|   Merc 230|22.8|  4|140.8| 95|3.92| 3.15| 22.9|  1|  0|   4|   2|
+|   Fiat 128|32.4|  4| 78.7| 66|4.08|  2.2|19.47|  1|  1|   4|   1|
+|Honda Civic|30.4|  4| 75.7| 52|4.93|1.615|18.52|  1|  1|   4|   2|
++-----------+----+---+-----+---+----+-----+-----+---+---+----+----+
+only showing top 5 rows
+
+# Use where method to get list of cars that have miles per gallon is less than 18
+sdf.where(sdf['mpg'] < 18).show(3) 
++----------+----+---+-----+---+----+----+-----+---+---+----+----+
+|      name| mpg|cyl| disp| hp|drat|  wt| qsec| vs| am|gear|carb|
++----------+----+---+-----+---+----+----+-----+---+---+----+----+
+|Duster 360|14.3|  8|360.0|245|3.21|3.57|15.84|  0|  0|   3|   4|
+| Merc 280C|17.8|  6|167.6|123|3.92|3.44| 18.9|  1|  0|   4|   4|
+|Merc 450SE|16.4|  8|275.8|180|3.07|4.07| 17.4|  0|  0|   3|   3|
++----------+----+---+-----+---+----+----+-----+---+---+----+----+
+only showing top 3 rows
+
+# Aggregating data and grouping by cylinders
+spark.sql("SELECT count(*), cyl from cars GROUP BY cyl").show()
+[Stage 20:====================>                                  (28 + 10) / 75]
++--------+---+
+|count(1)|cyl|
++--------+---+
+|       7|  6|
+|      14|  8|
+|      11|  4|
++--------+---+
+
+                                                                                
+Exercise 4 - Create a Pandas UDF to apply a columnar operation
+Apache Spark has become the de-facto standard in processing big data. To enable data scientists to leverage the value of big data, Spark added a Python API in version 0.7, with support for user-defined functions (UDF). These user-defined functions operate one-row-at-a-time, and thus suffer from high serialization and invocation overhead. As a result, many data pipelines define UDFs in Java and Scala and then invoke them from Python.
+
+Pandas UDFs built on top of Apache Arrow bring you the _best of both worlds_—the ability to define low-overhead, high-performance UDFs entirely in Python. In this simple example, we will build a Scalar Pandas UDF to convert the wT column from imperial units (1000-lbs) to metric units (metric tons).
+
+In addition, UDFs can be registered and invoked in SQL out of the box by registering a regular python function using the @pandas_udf() decorator. We can then apply this UDF to our wt column.
+
+Task 1: Importing libraries and registering a UDF
+# import the Pandas UDF function 
+from pyspark.sql.functions import pandas_udf, PandasUDFType
+@pandas_udf("float")
+def convert_wt(s: pd.Series) -> pd.Series:
+    # The formula for converting from imperial to metric tons
+    return s * 0.45
+​
+spark.udf.register("convert_weight", convert_wt)
+<function __main__.convert_wt(s: pandas.core.series.Series) -> pandas.core.series.Series>
+Task 2: Applying the UDF to the tableview
+We can now apply the convert_weight user-defined-function to our wt column from the cars table view. This is done very simply using the SQL query shown below. In this example below we show both the original weight (in ton-lbs) and converted weight (in metric tons).
+
+spark.sql("SELECT *, wt AS weight_imperial, convert_weight(wt) as weight_metric FROM cars").show()
+[Stage 21:>                                                         (0 + 1) / 1]/home/jupyterlab/conda/envs/python/lib/python3.7/site-packages/pyarrow/__init__.py:157: UserWarning: pyarrow.open_stream is deprecated, please use pyarrow.ipc.open_stream
+  warnings.warn("pyarrow.open_stream is deprecated, please use "
+[Stage 22:==============>                                           (1 + 3) / 4]/home/jupyterlab/conda/envs/python/lib/python3.7/site-packages/pyarrow/__init__.py:157: UserWarning: pyarrow.open_stream is deprecated, please use pyarrow.ipc.open_stream
+  warnings.warn("pyarrow.open_stream is deprecated, please use "
+/home/jupyterlab/conda/envs/python/lib/python3.7/site-packages/pyarrow/__init__.py:157: UserWarning: pyarrow.open_stream is deprecated, please use pyarrow.ipc.open_stream
+  warnings.warn("pyarrow.open_stream is deprecated, please use "
+/home/jupyterlab/conda/envs/python/lib/python3.7/site-packages/pyarrow/__init__.py:157: UserWarning: pyarrow.open_stream is deprecated, please use pyarrow.ipc.open_stream
+  warnings.warn("pyarrow.open_stream is deprecated, please use "
+/home/jupyterlab/conda/envs/python/lib/python3.7/site-packages/pyarrow/__init__.py:157: UserWarning: pyarrow.open_stream is deprecated, please use pyarrow.ipc.open_stream
+  warnings.warn("pyarrow.open_stream is deprecated, please use "
++-------------------+----+---+-----+---+----+-----+-----+---+---+----+----+---------------+-------------+
+|               name| mpg|cyl| disp| hp|drat|   wt| qsec| vs| am|gear|carb|weight_imperial|weight_metric|
++-------------------+----+---+-----+---+----+-----+-----+---+---+----+----+---------------+-------------+
+|          Mazda RX4|21.0|  6|160.0|110| 3.9| 2.62|16.46|  0|  1|   4|   4|           2.62|        1.179|
+|      Mazda RX4 Wag|21.0|  6|160.0|110| 3.9|2.875|17.02|  0|  1|   4|   4|          2.875|      1.29375|
+|         Datsun 710|22.8|  4|108.0| 93|3.85| 2.32|18.61|  1|  1|   4|   1|           2.32|        1.044|
+|     Hornet 4 Drive|21.4|  6|258.0|110|3.08|3.215|19.44|  1|  0|   3|   1|          3.215|      1.44675|
+|  Hornet Sportabout|18.7|  8|360.0|175|3.15| 3.44|17.02|  0|  0|   3|   2|           3.44|        1.548|
+|            Valiant|18.1|  6|225.0|105|2.76| 3.46|20.22|  1|  0|   3|   1|           3.46|        1.557|
+|         Duster 360|14.3|  8|360.0|245|3.21| 3.57|15.84|  0|  0|   3|   4|           3.57|       1.6065|
+|          Merc 240D|24.4|  4|146.7| 62|3.69| 3.19| 20.0|  1|  0|   4|   2|           3.19|       1.4355|
+|           Merc 230|22.8|  4|140.8| 95|3.92| 3.15| 22.9|  1|  0|   4|   2|           3.15|       1.4175|
+|           Merc 280|19.2|  6|167.6|123|3.92| 3.44| 18.3|  1|  0|   4|   4|           3.44|        1.548|
+|          Merc 280C|17.8|  6|167.6|123|3.92| 3.44| 18.9|  1|  0|   4|   4|           3.44|        1.548|
+|         Merc 450SE|16.4|  8|275.8|180|3.07| 4.07| 17.4|  0|  0|   3|   3|           4.07|       1.8315|
+|         Merc 450SL|17.3|  8|275.8|180|3.07| 3.73| 17.6|  0|  0|   3|   3|           3.73|       1.6785|
+|        Merc 450SLC|15.2|  8|275.8|180|3.07| 3.78| 18.0|  0|  0|   3|   3|           3.78|        1.701|
+| Cadillac Fleetwood|10.4|  8|472.0|205|2.93| 5.25|17.98|  0|  0|   3|   4|           5.25|       2.3625|
+|Lincoln Continental|10.4|  8|460.0|215| 3.0|5.424|17.82|  0|  0|   3|   4|          5.424|       2.4408|
+|  Chrysler Imperial|14.7|  8|440.0|230|3.23|5.345|17.42|  0|  0|   3|   4|          5.345|      2.40525|
+|           Fiat 128|32.4|  4| 78.7| 66|4.08|  2.2|19.47|  1|  1|   4|   1|            2.2|         0.99|
+|        Honda Civic|30.4|  4| 75.7| 52|4.93|1.615|18.52|  1|  1|   4|   2|          1.615|      0.72675|
+|     Toyota Corolla|33.9|  4| 71.1| 65|4.22|1.835| 19.9|  1|  1|   4|   1|          1.835|      0.82575|
++-------------------+----+---+-----+---+----+-----+-----+---+---+----+----+---------------+-------------+
+only showing top 20 rows
+
+Exercise 5 - Combining DataFrames based on a specific condition.
+Task 1 - Understanding JOIN operation
+# define sample DataFrame 1 
+​
+data = [("A101", "John"), ("A102", "Peter"), ("A103", "Charlie")] 
+​
+columns = ["emp_id", "emp_name"]
+​
+dataframe_1 = spark.createDataFrame(data, columns)
+# define sample DataFrame 2
+​
+data = [("A101", 3250), ("A102", 6735), ("A103", 8650)] 
+​
+columns = ["emp_id", "salary"] 
+​
+dataframe_2 = spark.createDataFrame(data, columns) 
+# create a new DataFrame, "combined_df" by performing an inner join 
+​
+combined_df = dataframe_1.join(dataframe_2, on="emp_id", how="inner") 
+# Show the data in combined_df as a list of Row.
+​
+combined_df.collect()
+                                                                                
+[Row(emp_id='A103', emp_name='Charlie', salary=8650),
+ Row(emp_id='A102', emp_name='Peter', salary=6735),
+ Row(emp_id='A101', emp_name='John', salary=3250)]
+Task 2 Filling the missing values
+# define sample DataFrame 1 with some missing values
+​
+data = [("A101", 1000), ("A102", 2000), ("A103",None)]
+​
+columns = ["emp_id", "salary"]
+​
+dataframe_1 = spark.createDataFrame(data, columns)
+​
+dataframe_1.head(3)
+[Row(emp_id='A101', salary=1000),
+ Row(emp_id='A102', salary=2000),
+ Row(emp_id='A103', salary=None)]
+You will see that an error is thrown as the dataframe has null value.
+
+Note that the third record of the DataFrame "dataframe_1", the column “salary”, contains null("na") value. It can be filled with a value by using the function "fillna()".
+
+# fill missing salary value with a specified value
+​
+filled_df = dataframe_1.fillna({"salary": 3000})
+filled_df.head(3)
+[Row(emp_id='A101', salary=1000),
+ Row(emp_id='A102', salary=2000),
+ Row(emp_id='A103', salary=3000)]
+Practice Questions
+Question 1 - Basic SQL operations
+Display all Mercedez car rows from the cars table view we created earlier. The Mercedez cars have the prefix "Merc" in the car name column.
+
+# Code block for learners to answer
+Double-click here for a hint.
+
+Double-click **here** for the solution.
+​
+<!-- The answer is below:
+​
+spark.sql("SELECT * FROM cars where name like 'Merc%'").show()
+​
+-->
+​
+Question 2 - User Defined Functions
+In this notebook, we created a UDF to convert weight from imperial to metric units. Now for this exercise, please create a pandas UDF to convert the mpg column to kmpl (kilometers per liter). You can use the conversion factor of 0.425.
+
+# Code block for learners to answer
+from pyspark.sql.functions import pandas_udf
+​
+@pandas_udf("float")
+def convert_mileage(s: pd.Series) -> pd.Series:
+    # The formula for converting from imperial to metric tons
+    return s * 0.425
+​
+spark.udf.register("convert_mileage", convert_mileage)
+​
+spark.sql("SELECT *, mpg AS mpg, convert_mileage(mpg) as kmpl FROM cars").show()
+Double-click **here** for the solution.
+​
+<!-- The answer is below:
+from pyspark.sql.functions import pandas_udf
+​
+@pandas_udf("float")
+def convert_mileage(s: pd.Series) -> pd.Series:
+    # The formula for converting from imperial to metric tons
+    return s * 0.425
+​
+spark.udf.register("convert_mileage", convert_mileage)
+​
+spark.sql("SELECT *, mpg AS mpg, convert_mileage(mpg) as kmpl FROM cars").show()
+-->
