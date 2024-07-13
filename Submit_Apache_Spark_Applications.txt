@@ -1,0 +1,100 @@
+--Install a Apache Spark cluster using Docker Compose
+
+Get the latest code:
+
+
+git clone https://github.com/big-data-europe/docker-spark.git
+Copied!Executed!
+Change the directory to the downloaded code:
+
+
+cd docker-spark
+Start the cluster
+
+
+docker-compose up
+
+--Create code
+
+touch submit.py
+A new python file called submit.py is created.
+
+Open the file in the file editor.
+
+Paste the following code to the file and save.
+
+import findspark
+findspark.init()
+from pyspark import SparkContext, SparkConf
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StructField, StructType, IntegerType, StringType
+sc = SparkContext.getOrCreate(SparkConf().setMaster('spark://localhost:7077'))
+sc.setLogLevel("INFO")
+spark = SparkSession.builder.getOrCreate()
+spark = SparkSession.builder.getOrCreate()
+df = spark.createDataFrame(
+    [
+        (1, "foo"),
+        (2, "bar"),
+    ],
+    StructType(
+        [
+            StructField("id", IntegerType(), False),
+            StructField("txt", StringType(), False),
+        ]
+    ),
+)
+print(df.dtypes)
+df.show()
+
+--Execute code / submit Spark job
+
+Now we execute the python file we saved earlier.
+
+In the terminal, run the following commands to upgrade the pip installer to ensure you have the latest version by running the following commands.
+
+rm -r ~/.cache/pip/selfcheck/
+pip3 install --upgrade pip
+pip install --upgrade distro-info
+rm -r ~/.cache/pip/selfcheck/ removes any previously cached version of pip and allows to install the latest one.
+
+Please enter the following commands in the terminal to download the spark environment.
+
+wget https://archive.apache.org/dist/spark/spark-3.3.3/spark-3.3.3-bin-hadoop3.tgz && tar xf spark-3.3.3-bin-hadoop3.tgz && rm -rf spark-3.3.3-bin-hadoop3.tgz
+This takes a while. This downloads the spark as a zipped archive and unzips it in the current directory.
+
+Run the following commands to set up the JAVA_HOME which is preinstalled in the environment and SPARK_HOME which you just downloaded.
+
+export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
+export SPARK_HOME=/home/project/spark-3.3.3-bin-hadoop3
+Copied!Executed!
+Install the required packages to set up the spark environment.
+
+pip install pyspark
+
+python3 -m pip install findspark
+
+Type in the following command in the terminal to execute the Python script.
+
+python3 submit.py
+
+
+Please have a look at the UI of the Apache Spark master and worker(this is copied and pasted below
+
+ 3.3.0 Spark Master at spark://5eb45d2ebdc5:7077
+URL: spark://5eb45d2ebdc5:7077
+Alive Workers: 1
+Cores in use: 2 Total, 2 Used
+Memory in use: 6.5 GiB Total, 1024.0 MiB Used
+Resources in use:
+Applications: 1 Running, 0 Completed
+Drivers: 0 Running, 0 Completed
+Status: ALIVE
+ Workers (1)
+Worker Id	Address	State	Cores	Memory	Resources
+worker-20240713044221-172.18.0.3-33265	172.18.0.3:33265	ALIVE	2 (2 Used)	6.5 GiB (1024.0 MiB Used)	
+ Running Applications (1)
+Application ID	Name	Cores	Memory per Executor	Resources Per Executor	Submitted Time	User	State	Duration
+app-20240713044632-0000(kill)	pyspark-shell	2	1024.0 MiB		2024/07/13 04:46:32	theia	RUNNING	22 min
+ Completed Applications (0)
+Application ID	Name	Cores	Memory per Executor	Resources Per Executor	Submitted Time	User	State	Duration
