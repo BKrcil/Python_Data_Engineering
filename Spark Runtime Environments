@@ -1,0 +1,26 @@
+Summary and Highlights: Spark Runtime Environments
+In this lesson, you learned that:
+
+Running Spark on IBM Cloud provides enterprise security and easily ties in IBM big data solutions for AIOps, IBM Watson, and IBM Analytics Engine. 
+
+Spark’s big data processing capabilities work well with AIOps tools, using machine learning to identify events or patterns and help report or fix issues. 
+
+IBM Spectrum Conductor manages and deploys Spark resources dynamically on a single cluster and provides enterprise security. 
+
+IBM Watson helps you focus on Spark’s machine learning capabilities by creating automated production-ready environments for AI. 
+
+IBM Analytics Engine separates storage and compute to create a scalable analytics solution alongside Spark’s data processing capabilities.
+
+You can set Spark configuration using properties (to control application behavior), environment variables (to adjust settings on a per-machine basis), or logging properties (to control logging outputs). 
+
+Spark property configuration follows a precedence order, with the highest being configuration set programmatically, then spark-submit configuration, and lastly, configuration set in the “spark-defaults.conf” file. 
+
+Use Static configuration options for values that don’t change from run to run or properties related to the application, such as the application name. 
+
+Use dynamic configuration options for values that change or need tuning when deployed, such as master location, executor memory, or core settings.
+
+Use Kubernetes to run containerized applications on a cluster to manage distributed systems such as Spark with more flexibility and resilience. 
+
+You can run Kubernetes as a deployment environment, which is useful for trying out changes before deploying to clusters in the cloud. Kubernetes can be hosted on private or hybrid clouds and set up using existing tools to bootstrap clusters or using turnkey options from certified providers. 
+
+While you can use Kubernetes with Spark launched either in client or cluster mode, when using Client mode, executors must be able to connect with the driver, and pod cleanup settings are required.
