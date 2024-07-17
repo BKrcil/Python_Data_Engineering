@@ -1,0 +1,386 @@
+Prerequisites
+For this lab assignment, you will be using Python and Spark (PySpark). Therefore, it's essential to make sure that the following libraries are installed in your lab environment or within Skills Network (SN) Labs
+# Installing required packages  
+​
+pip install pyspark  findspark wget
+​
+
+import findspark
+​
+findspark.init()
+# PySpark is the Spark API for Python. In this lab, we use PySpark to initialize the SparkContext.   
+​
+from pyspark import SparkContext, SparkConf
+​
+from pyspark.sql import SparkSession
+# Creating a SparkContext object  
+​
+sc = SparkContext.getOrCreate()
+​
+# Creating a SparkSession  
+​
+spark = SparkSession \
+    .builder \
+    .appName("Python Spark DataFrames basic example") \
+    .config("spark.some.config.option", "some-value") \
+    .getOrCreate()
+24/07/17 02:15:15 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+Download the CSV data.
+ 
+
+# Download the CSV data first into a local `employees.csv` file
+import wget
+wget.download("https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/IBM-BD0225EN-SkillsNetwork/data/employees.csv")
+'employees.csv'
+Tasks
+Task 1: Generate a Spark DataFrame from the CSV data
+Read data from the provided CSV file, employees.csv and import it into a Spark DataFrame variable named employees_df.
+
+# Read data from the "emp" CSV file and import it into a DataFrame variable named "employees_df"  
+df = spark.read.csv("employees.csv", header = True, inferSchema= True)
+Task 2: Define a schema for the data
+Construct a schema for the input data and then utilize the defined schema to read the CSV file to create a DataFrame named employees_df. 
+
+# Define a Schema for the input data and read the file using the user-defined Schema
+from pyspark.sql import SparkSession 
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType 
+schema = StructType([ 
+    StructField('Emp_No', 
+                StringType(), True), 
+    StructField('Emp_Name', 
+                IntegerType(), True), 
+    StructField('Salary', 
+                StringType(), True), 
+    StructField('Age', 
+                IntegerType(), True), 
+    StructField('Department', 
+                IntegerType(), True) 
+]) 
+Task 3: Display schema of DataFrame
+Display the schema of the employees_df DataFrame, showing all columns and their respective data types. 
+
+# Display all columns of the DataFrame, along with their respective data types
+df.show()
++------+---------+------+---+----------+
+|Emp_No| Emp_Name|Salary|Age|Department|
++------+---------+------+---+----------+
+|   198|   Donald|  2600| 29|        IT|
+|   199|  Douglas|  2600| 34|     Sales|
+|   200| Jennifer|  4400| 36| Marketing|
+|   201|  Michael| 13000| 32|        IT|
+|   202|      Pat|  6000| 39|        HR|
+|   203|    Susan|  6500| 36| Marketing|
+|   204|  Hermann| 10000| 29|   Finance|
+|   205|  Shelley| 12008| 33|   Finance|
+|   206|  William|  8300| 37|        IT|
+|   100|   Steven| 24000| 39|        IT|
+|   101|    Neena| 17000| 27|     Sales|
+|   102|      Lex| 17000| 37| Marketing|
+|   103|Alexander|  9000| 39| Marketing|
+|   104|    Bruce|  6000| 38|        IT|
+|   105|    David|  4800| 39|        IT|
+|   106|    Valli|  4800| 38|     Sales|
+|   107|    Diana|  4200| 35|     Sales|
+|   108|    Nancy| 12008| 28|     Sales|
+|   109|   Daniel|  9000| 35|        HR|
+|   110|     John|  8200| 31| Marketing|
++------+---------+------+---+----------+
+only showing top 20 rows
+
+Task 4: Create a temporary view
+Create a temporary view named employees for the employees_df DataFrame, enabling Spark SQL queries on the data.
+
+# Create a temporary view named "employees" for the DataFrame
+df.createTempView("employees")
+​
+Task 5: Execute an SQL query
+Compose and execute an SQL query to fetch the records from the employees view where the age of employees exceeds 30. Then, display the result of the SQL query, showcasing the filtered records.
+
+# SQL query to fetch solely the records from the View where the age exceeds 30
+query1 = spark.sql("SELECT * FROM  employees WHERE Age > 30")
+query1.show()
++------+-----------+------+---+----------+
+|Emp_No|   Emp_Name|Salary|Age|Department|
++------+-----------+------+---+----------+
+|   199|    Douglas|  2600| 34|     Sales|
+|   200|   Jennifer|  4400| 36| Marketing|
+|   201|    Michael| 13000| 32|        IT|
+|   202|        Pat|  6000| 39|        HR|
+|   203|      Susan|  6500| 36| Marketing|
+|   205|    Shelley| 12008| 33|   Finance|
+|   206|    William|  8300| 37|        IT|
+|   100|     Steven| 24000| 39|        IT|
+|   102|        Lex| 17000| 37| Marketing|
+|   103|  Alexander|  9000| 39| Marketing|
+|   104|      Bruce|  6000| 38|        IT|
+|   105|      David|  4800| 39|        IT|
+|   106|      Valli|  4800| 38|     Sales|
+|   107|      Diana|  4200| 35|     Sales|
+|   109|     Daniel|  9000| 35|        HR|
+|   110|       John|  8200| 31| Marketing|
+|   111|     Ismael|  7700| 32|        IT|
+|   112|Jose Manuel|  7800| 34|        HR|
+|   113|       Luis|  6900| 34|     Sales|
+|   116|     Shelli|  2900| 37|   Finance|
++------+-----------+------+---+----------+
+only showing top 20 rows
+
+Task 6: Calculate Average Salary by Department
+Compose an SQL query to retrieve the average salary of employees grouped by department. Display the result.
+
+# SQL query to calculate the average salary of employees grouped by department
+from pyspark.sql.functions import avg
+​
+query2 = df.groupBy('EMP_no').agg(avg('salary').alias('avg_salary'))
+query2.show()
++------+----------+
+|EMP_no|avg_salary|
++------+----------+
+|   137|    3600.0|
+|   133|    3300.0|
+|   108|   12008.0|
+|   101|   17000.0|
+|   115|    3100.0|
+|   126|    2700.0|
+|   103|    9000.0|
+|   128|    2200.0|
+|   122|    7900.0|
+|   111|    7700.0|
+|   140|    2500.0|
+|   132|    2100.0|
+|   206|    8300.0|
+|   205|   12008.0|
+|   139|    2700.0|
+|   120|    8000.0|
+|   117|    2800.0|
+|   112|    7800.0|
+|   127|    2400.0|
+|   202|    6000.0|
++------+----------+
+only showing top 20 rows
+
+                                                                                
+Task 7: Filter and Display IT Department Employees
+Apply a filter on the employees_df DataFrame to select records where the department is 'IT'. Display the filtered DataFrame.
+
+# Apply a filter to select records where the department is 'IT'
+IT_records = df.filter("Department = 'IT'")
+IT_records.show()
++------+--------+------+---+----------+
+|Emp_No|Emp_Name|Salary|Age|Department|
++------+--------+------+---+----------+
+|   198|  Donald|  2600| 29|        IT|
+|   201| Michael| 13000| 32|        IT|
+|   206| William|  8300| 37|        IT|
+|   100|  Steven| 24000| 39|        IT|
+|   104|   Bruce|  6000| 38|        IT|
+|   105|   David|  4800| 39|        IT|
+|   111|  Ismael|  7700| 32|        IT|
+|   129|   Laura|  3300| 38|        IT|
+|   132|      TJ|  2100| 34|        IT|
+|   136|   Hazel|  2200| 29|        IT|
++------+--------+------+---+----------+
+
+#### Task 8: Add 10% Bonus to Salaries
+​
+Perform a transformation to add a new column named "SalaryAfterBonus" to the DataFrame. Calculate the new salary by adding a 10% bonus to each employee's salary.
+​
+from pyspark.sql.functions import col
+​
+# Add a new column "SalaryAfterBonus" with 10% bonus added to the original salary
+df = df.withColumn("SalaryAfterBonus",df.Salary *1.1)
+df.show()
++------+---------+------+---+----------+------------------+
+|Emp_No| Emp_Name|Salary|Age|Department|  SalaryAfterBonus|
++------+---------+------+---+----------+------------------+
+|   198|   Donald|  2600| 29|        IT|2860.0000000000005|
+|   199|  Douglas|  2600| 34|     Sales|2860.0000000000005|
+|   200| Jennifer|  4400| 36| Marketing|            4840.0|
+|   201|  Michael| 13000| 32|        IT|14300.000000000002|
+|   202|      Pat|  6000| 39|        HR| 6600.000000000001|
+|   203|    Susan|  6500| 36| Marketing| 7150.000000000001|
+|   204|  Hermann| 10000| 29|   Finance|           11000.0|
+|   205|  Shelley| 12008| 33|   Finance|13208.800000000001|
+|   206|  William|  8300| 37|        IT|            9130.0|
+|   100|   Steven| 24000| 39|        IT|26400.000000000004|
+|   101|    Neena| 17000| 27|     Sales|           18700.0|
+|   102|      Lex| 17000| 37| Marketing|           18700.0|
+|   103|Alexander|  9000| 39| Marketing|            9900.0|
+|   104|    Bruce|  6000| 38|        IT| 6600.000000000001|
+|   105|    David|  4800| 39|        IT|            5280.0|
+|   106|    Valli|  4800| 38|     Sales|            5280.0|
+|   107|    Diana|  4200| 35|     Sales|            4620.0|
+|   108|    Nancy| 12008| 28|     Sales|13208.800000000001|
+|   109|   Daniel|  9000| 35|        HR|            9900.0|
+|   110|     John|  8200| 31| Marketing|            9020.0|
++------+---------+------+---+----------+------------------+
+only showing top 20 rows
+
+Task 9: Find Maximum Salary by Age
+Group the data by age and calculate the maximum salary for each age group. Display the result.
+
+from pyspark.sql.functions import max
+# Group data by age and calculate the maximum salary for each age group
+max_salary_by_age = df.groupBy('Age').agg(max('salary').alias('max_salary'))
+max_salary_by_age.show()
+                                                                                
++---+----------+
+|Age|max_salary|
++---+----------+
+| 31|      8200|
+| 34|      7800|
+| 28|     12008|
+| 27|     17000|
+| 26|      3600|
+| 37|     17000|
+| 35|      9000|
+| 39|     24000|
+| 38|      6000|
+| 29|     10000|
+| 32|     13000|
+| 33|     12008|
+| 30|      8000|
+| 36|      7900|
++---+----------+
+
+                                                                                
+Task 10: Self-Join on Employee Data
+Join the "employees_df" DataFrame with itself based on the "Emp_No" column. Display the result.
+
+# Join the DataFrame with itself based on the "Emp_No" column
+joined_df = df.join(df, 'Emp_No','inner')
+joined_df.show()
++------+---------+------+---+----------+------------------+---------+------+---+----------+------------------+
+|Emp_No| Emp_Name|Salary|Age|Department|  SalaryAfterBonus| Emp_Name|Salary|Age|Department|  SalaryAfterBonus|
++------+---------+------+---+----------+------------------+---------+------+---+----------+------------------+
+|   198|   Donald|  2600| 29|        IT|2860.0000000000005|   Donald|  2600| 29|        IT|2860.0000000000005|
+|   199|  Douglas|  2600| 34|     Sales|2860.0000000000005|  Douglas|  2600| 34|     Sales|2860.0000000000005|
+|   200| Jennifer|  4400| 36| Marketing|            4840.0| Jennifer|  4400| 36| Marketing|            4840.0|
+|   201|  Michael| 13000| 32|        IT|14300.000000000002|  Michael| 13000| 32|        IT|14300.000000000002|
+|   202|      Pat|  6000| 39|        HR| 6600.000000000001|      Pat|  6000| 39|        HR| 6600.000000000001|
+|   203|    Susan|  6500| 36| Marketing| 7150.000000000001|    Susan|  6500| 36| Marketing| 7150.000000000001|
+|   204|  Hermann| 10000| 29|   Finance|           11000.0|  Hermann| 10000| 29|   Finance|           11000.0|
+|   205|  Shelley| 12008| 33|   Finance|13208.800000000001|  Shelley| 12008| 33|   Finance|13208.800000000001|
+|   206|  William|  8300| 37|        IT|            9130.0|  William|  8300| 37|        IT|            9130.0|
+|   100|   Steven| 24000| 39|        IT|26400.000000000004|   Steven| 24000| 39|        IT|26400.000000000004|
+|   101|    Neena| 17000| 27|     Sales|           18700.0|    Neena| 17000| 27|     Sales|           18700.0|
+|   102|      Lex| 17000| 37| Marketing|           18700.0|      Lex| 17000| 37| Marketing|           18700.0|
+|   103|Alexander|  9000| 39| Marketing|            9900.0|Alexander|  9000| 39| Marketing|            9900.0|
+|   104|    Bruce|  6000| 38|        IT| 6600.000000000001|    Bruce|  6000| 38|        IT| 6600.000000000001|
+|   105|    David|  4800| 39|        IT|            5280.0|    David|  4800| 39|        IT|            5280.0|
+|   106|    Valli|  4800| 38|     Sales|            5280.0|    Valli|  4800| 38|     Sales|            5280.0|
+|   107|    Diana|  4200| 35|     Sales|            4620.0|    Diana|  4200| 35|     Sales|            4620.0|
+|   108|    Nancy| 12008| 28|     Sales|13208.800000000001|    Nancy| 12008| 28|     Sales|13208.800000000001|
+|   109|   Daniel|  9000| 35|        HR|            9900.0|   Daniel|  9000| 35|        HR|            9900.0|
+|   110|     John|  8200| 31| Marketing|            9020.0|     John|  8200| 31| Marketing|            9020.0|
++------+---------+------+---+----------+------------------+---------+------+---+----------+------------------+
+only showing top 20 rows
+
+Task 11: Calculate Average Employee Age
+Calculate the average age of employees using the built-in aggregation function. Display the result.
+
+# Calculate the average age of employees
+from pyspark.sql.functions import avg 
+​
+avg_emp_age = df.agg(avg('Age').alias('avg_age'))
+avg_emp_age.show()
++-------+
+|avg_age|
++-------+
+|  33.56|
++-------+
+
+Task 12: Calculate Total Salary by Department
+Calculate the total salary for each department using the built-in aggregation function. Display the result.
+
+# Calculate the total salary for each department. Hint - User GroupBy and Aggregate functions
+from pyspark.sql.functions import sum 
+​
+total_salary = df.groupBy('Department').agg(sum('Salary').alias('toal_salary'))
+total_salary.show()
+
++----------+-----------+
+|Department|toal_salary|
++----------+-----------+
+|     Sales|      71408|
+|        HR|      46700|
+|   Finance|      57308|
+| Marketing|      59700|
+|        IT|      74000|
++----------+-----------+
+
+                                                                                
+Task 13: Sort Data by Age and Salary
+Apply a transformation to sort the DataFrame by age in ascending order and then by salary in descending order. Display the sorted DataFrame.
+
+# Sort the DataFrame by age in ascending order and then by salary in descending order
+​
+df.orderBy(['Age'], ascending = [True])
+df.orderBy(['Salary'], descending = [True]).show()
++------+---------+------+---+----------+------------------+
+|Emp_No| Emp_Name|Salary|Age|Department|  SalaryAfterBonus|
++------+---------+------+---+----------+------------------+
+|   132|       TJ|  2100| 34|        IT|            2310.0|
+|   136|    Hazel|  2200| 29|        IT|            2420.0|
+|   128|   Steven|  2200| 33|   Finance|            2420.0|
+|   127|    James|  2400| 31|        HR|            2640.0|
+|   135|       Ki|  2400| 35| Marketing|            2640.0|
+|   131|    James|  2500| 36|     Sales|            2750.0|
+|   119|    Karen|  2500| 32|   Finance|            2750.0|
+|   140|   Joshua|  2500| 29|   Finance|            2750.0|
+|   198|   Donald|  2600| 29|        IT|2860.0000000000005|
+|   199|  Douglas|  2600| 34|     Sales|2860.0000000000005|
+|   118|      Guy|  2600| 36|        HR|2860.0000000000005|
+|   126|    Irene|  2700| 28|        HR|2970.0000000000005|
+|   139|     John|  2700| 36|     Sales|2970.0000000000005|
+|   130|    Mozhe|  2800| 28| Marketing|3080.0000000000005|
+|   117|    Sigal|  2800| 33|     Sales|3080.0000000000005|
+|   116|   Shelli|  2900| 37|   Finance|3190.0000000000005|
+|   134|  Michael|  2900| 29|     Sales|3190.0000000000005|
+|   115|Alexander|  3100| 29|   Finance|3410.0000000000005|
+|   125|    Julia|  3200| 35|   Finance|3520.0000000000005|
+|   138|  Stephen|  3200| 35|     Sales|3520.0000000000005|
++------+---------+------+---+----------+------------------+
+only showing top 20 rows
+
+Task 14: Count Employees in Each Department
+Calculate the number of employees in each department. Display the result.
+
+
+from pyspark.sql.functions import count
+​
+# Calculate the number of employees in each department
+num_employees = df.groupBy('Department').agg(count('Emp_name').alias('count_employees'))
+num_employees.show()
+                                                                                
++----------+---------------+
+|Department|count_employees|
++----------+---------------+
+|     Sales|             13|
+|        HR|              8|
+|   Finance|             10|
+| Marketing|              9|
+|        IT|             10|
++----------+---------------+
+
+Task 15: Filter Employees with the letter o in the Name
+Apply a filter to select records where the employee's name contains the letter 'o'. Display the filtered DataFrame.
+
+filtered_df.show()
+# Apply a filter to select records where the employee's name contains the letter 'o'
+filtered_df = df.filter("Emp_Name like'%o%'")
+filtered_df.show()
++------+-----------+------+---+----------+------------------+
+|Emp_No|   Emp_Name|Salary|Age|Department|  SalaryAfterBonus|
++------+-----------+------+---+----------+------------------+
+|   198|     Donald|  2600| 29|        IT|2860.0000000000005|
+|   199|    Douglas|  2600| 34|     Sales|2860.0000000000005|
+|   110|       John|  8200| 31| Marketing|            9020.0|
+|   112|Jose Manuel|  7800| 34|        HR|            8580.0|
+|   130|      Mozhe|  2800| 28| Marketing|3080.0000000000005|
+|   133|      Jason|  3300| 38|     Sales|3630.0000000000005|
+|   139|       John|  2700| 36|     Sales|2970.0000000000005|
+|   140|     Joshua|  2500| 29|   Finance|            2750.0|
++------+-----------+------+---+----------+------------------+
