@@ -1,0 +1,161 @@
+Hands On Lab - Saving and loading a SparkML model
+Objectives:
+In this lab you will
+
+Create a simple Linear Regression Model
+Save the SparkML model
+Load the SparkML model
+Make predictions using the loaded SparkML model
+Install pyspark
+!pip install pyspark
+!pip install findspark
+Collecting pyspark
+  Downloading pyspark-3.4.3.tar.gz (311.4 MB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 311.4/311.4 MB 1.6 MB/s eta 0:00:0000:0100:01
+  Preparing metadata (setup.py) ... done
+Collecting py4j==0.10.9.7 (from pyspark)
+  Downloading py4j-0.10.9.7-py2.py3-none-any.whl (200 kB)
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 200.5/200.5 kB 25.8 MB/s eta 0:00:00
+Building wheels for collected packages: pyspark
+  Building wheel for pyspark (setup.py) ... done
+  Created wheel for pyspark: filename=pyspark-3.4.3-py2.py3-none-any.whl size=311885504 sha256=584d77d5378e8f2b4ae5d80b2e5f848858918e3596fa70b3e68af4bf666ab48e
+  Stored in directory: /home/jupyterlab/.cache/pip/wheels/37/bc/bb/77785f6fcd2c83e663647f73225b76f3a3d5fd00762d7daf6f
+Successfully built pyspark
+Installing collected packages: py4j, pyspark
+Successfully installed py4j-0.10.9.7 pyspark-3.4.3
+Collecting findspark
+  Downloading findspark-2.0.1-py2.py3-none-any.whl (4.4 kB)
+Installing collected packages: findspark
+Successfully installed findspark-2.0.1
+Import libraries
+import findspark
+findspark.init()
+from pyspark import SparkContext, SparkConf
+from pyspark.sql import SparkSession
+Creating the spark session and context
+# Creating a spark context class
+sc = SparkContext()
+​
+# Creating a spark session
+spark = SparkSession \
+    .builder \
+    .appName("Saving and Loading a SparkML Model").getOrCreate()
+24/07/26 03:35:44 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+Importing Spark ML libraries
+from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.regression import LinearRegression
+Create a DataFrame with sample data
+# Create a simple data set of infant height(cms) weight(kgs) chart.
+​
+mydata = [[46,2.5],[51,3.4],[54,4.4],[57,5.1],[60,5.6],[61,6.1],[63,6.4]]
+  
+# Mention column names of dataframe
+columns = ["height", "weight"]
+  
+# creating a dataframe
+mydf = spark.createDataFrame(mydata, columns)
+  
+# show data frame
+mydf.show()
+                                                                                
++------+------+
+|height|weight|
++------+------+
+|    46|   2.5|
+|    51|   3.4|
+|    54|   4.4|
+|    57|   5.1|
+|    60|   5.6|
+|    61|   6.1|
+|    63|   6.4|
++------+------+
+
+Converting data frame columns into feature vectors
+In this task we use the VectorAssembler() function to convert the dataframe columns into feature vectors. For our example, we use the horsepower ("hp) and weight of the car as input features and the miles-per-gallon ("mpg") as target labels.
+
+assembler = VectorAssembler(
+    inputCols=["height"],
+    outputCol="features")
+​
+data = assembler.transform(mydf).select('features','weight')
+data.show()
++--------+------+
+|features|weight|
++--------+------+
+|  [46.0]|   2.5|
+|  [51.0]|   3.4|
+|  [54.0]|   4.4|
+|  [57.0]|   5.1|
+|  [60.0]|   5.6|
+|  [61.0]|   6.1|
+|  [63.0]|   6.4|
++--------+------+
+
+Create and Train model
+We can create the model using the LinearRegression() class and train using the fit() function.
+
+# Create a LR model
+lr = LinearRegression(featuresCol='features', labelCol='weight', maxIter=100)
+lr.setRegParam(0.1)
+# Fit the model
+lrModel = lr.fit(data)
+[Stage 8:>                                                          (0 + 8) / 8]24/07/26 03:36:08 WARN netlib.BLAS: Failed to load implementation from: com.github.fommil.netlib.NativeSystemBLAS
+24/07/26 03:36:08 WARN netlib.BLAS: Failed to load implementation from: com.github.fommil.netlib.NativeRefBLAS
+24/07/26 03:36:09 WARN netlib.LAPACK: Failed to load implementation from: com.github.fommil.netlib.NativeSystemLAPACK
+24/07/26 03:36:09 WARN netlib.LAPACK: Failed to load implementation from: com.github.fommil.netlib.NativeRefLAPACK
+                                                                                
+Save the model
+lrModel.save('infantheight2.model')
+                                                                                
+Load the model
+# You need LinearRegressionModel to load the model
+from pyspark.ml.regression import LinearRegressionModel
+model = LinearRegressionModel.load('infantheight2.model')
+Make Prediction
+Predict the weight of an infant whose height is 70 CMs.
+# This function converts a scalar number into a dataframe that can be used by the model to predict.
+def predict(weight):
+    assembler = VectorAssembler(inputCols=["weight"],outputCol="features")
+    data = [[weight,0]]
+    columns = ["weight", "height"]
+    _ = spark.createDataFrame(data, columns)
+    __ = assembler.transform(_).select('features','height')
+    predictions = model.transform(__)
+    predictions.select('prediction').show()
+​
+predict(70)
++-----------------+
+|       prediction|
++-----------------+
+|7.863454719775907|
++-----------------+
+
+Practice exercises
+Save the model as babyweightprediction.model
+)
+lrModel.save('babyweightprediction.model')
+                                                                                
+lrModel.save('babyweightprediction.model'
+
+​
+Load the model babyweightprediction.model
+model = LinearRegressionModel.load('babyweightprediction.model')
+​
+
+
+​
+Predict the weight of an infant whose height is 50 CMs.
+
+
+
+
+
+
+predict(50)
++------------------+
+|        prediction|
++------------------+
+|3.4666826711164465|
++------------------+
